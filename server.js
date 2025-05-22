@@ -36,12 +36,32 @@ app.get("/proxy", async (req, res) => {
         return res.status(400).json({ error: "Missing 'url' query parameter" });
     }
 
-    const decodedUrl = decodeURIComponent(url);
+    try {
+        const decodedUrl = decodeURIComponent(url);
 
-    // Redirect browser langsung ke URL target
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.redirect(decodedUrl);
+        const response = await axios({
+            url: decodedUrl,
+            method: 'GET',
+            responseType: 'stream',
+            headers: {
+                'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0',
+                'Origin': 'https://cors-command-2.vercel.app', // spoof origin jika perlu
+                'Referer': 'https://cors-command-2.vercel.app'
+            }
+        });
+
+        // Forward semua header penting
+        res.setHeader('Content-Type', response.headers['content-type'] || 'application/octet-stream');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Headers', '*');
+
+        response.data.pipe(res);
+    } catch (error) {
+        console.error("Proxy error:", error.message);
+        res.status(500).json({ error: "Proxy request failed", details: error.message });
+    }
 });
+
 
 
 
