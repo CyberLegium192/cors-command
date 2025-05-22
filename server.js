@@ -28,6 +28,15 @@ app.get("/api/showroom/:room_id", async (req, res) => {
     }
 });
 
+function streamToString(stream) {
+    const chunks = [];
+    return new Promise((resolve, reject) => {
+        stream.on("data", (chunk) => chunks.push(chunk));
+        stream.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+        stream.on("error", reject);
+    });
+}
+
 
 app.get("/proxy", async (req, res) => {
     const { url } = req.query;
@@ -39,28 +48,35 @@ app.get("/proxy", async (req, res) => {
     try {
         const decodedUrl = decodeURIComponent(url);
 
+        console.log("Proxying URL:", decodedUrl); // 🐛 log URL
+
         const response = await axios({
             url: decodedUrl,
             method: 'GET',
             responseType: 'stream',
             headers: {
                 'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0',
-                'Origin': 'https://cors-command-2.vercel.app', // spoof origin jika perlu
+                'Origin': 'https://cors-command-2.vercel.app',
                 'Referer': 'https://cors-command-2.vercel.app'
-            }
+            },
+            timeout: 5000 // optional timeout
         });
 
-        // Forward semua header penting
         res.setHeader('Content-Type', response.headers['content-type'] || 'application/octet-stream');
         res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Access-Control-Allow-Headers', '*');
-
         response.data.pipe(res);
     } catch (error) {
-        console.error("Proxy error:", error.message);
-        res.status(500).json({ error: "Proxy request failed", details: error.message });
+        console.error("🔥 Proxy error:");
+        console.error("→ message:", error.message);
+        if (error.response) {
+            console.error("→ status:", error.response.status);
+            console.error("→ headers:", error.response.headers);
+            console.error("→ data:", await streamToString(error.response.data));
+        }
+        res.status(500).json({ error: "Proxy request failed", message: error.message });
     }
 });
+
 
 
 
