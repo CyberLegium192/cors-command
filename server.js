@@ -36,23 +36,13 @@ app.get("/proxy", async (req, res) => {
         return res.status(400).json({ error: "Missing 'url' query parameter" });
     }
 
-    try {
-        const response = await axios.get(decodeURIComponent(url), {
-            responseType: 'stream',
-            headers: {
-                'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0'
-            }
-        });
+    const decodedUrl = decodeURIComponent(url);
 
-        res.setHeader('Content-Type', response.headers['content-type'] || 'application/octet-stream');
-        res.setHeader('Access-Control-Allow-Origin', '*');
-
-        response.data.pipe(res);
-    } catch (error) {
-        console.error("Proxy error:", error.message);
-        res.status(500).json({ error: "Proxy request failed" });
-    }
+    // Redirect browser langsung ke URL target
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.redirect(decodedUrl);
 });
+
 
 
 // Tambahkan handler untuk Vercel
