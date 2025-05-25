@@ -28,57 +28,29 @@ app.get("/api/showroom/:room_id", async (req, res) => {
     }
 });
 
-function streamToString(stream) {
-    const chunks = [];
-    return new Promise((resolve, reject) => {
-        stream.on("data", (chunk) => chunks.push(chunk));
-        stream.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
-        stream.on("error", reject);
-    });
-}
 
-
-app.get("/proxy", async (req, res) => {
+app.get("/api/stream", async (req, res) => {
     const { url } = req.query;
 
-    if (!url) {
-        return res.status(400).json({ error: "Missing 'url' query parameter" });
-    }
+    if (!url) return res.status(400).json({ error: "Parameter 'url' diperlukan." });
 
     try {
-        const decodedUrl = decodeURIComponent(url);
-
-        console.log("Proxying URL:", decodedUrl); // 🐛 log URL
-
-        const response = await axios({
-            url: decodedUrl,
-            method: 'GET',
+        const response = await axios.get(url, {
             responseType: 'stream',
             headers: {
-                'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0',
-                'Origin': 'https://cors-command-2.vercel.app',
-                'Referer': 'https://cors-command-2.vercel.app'
-            },
-            timeout: 5000 // optional timeout
+                // Jika diperlukan, tambahkan custom headers
+                'Origin': 'https://dc.crstlnz.my.id'
+            }
         });
 
-        res.setHeader('Content-Type', response.headers['content-type'] || 'application/octet-stream');
-        res.setHeader('Access-Control-Allow-Origin', '*');
+        // Set content type dan stream video-nya
+        res.setHeader('Content-Type', response.headers['content-type']);
         response.data.pipe(res);
     } catch (error) {
-        console.error("🔥 Proxy error:");
-        console.error("→ message:", error.message);
-        if (error.response) {
-            console.error("→ status:", error.response.status);
-            console.error("→ headers:", error.response.headers);
-            console.error("→ data:", await streamToString(error.response.data));
-        }
-        res.status(500).json({ error: "Proxy request failed", message: error.message });
+        console.error("Error saat mem-proxy video:", error.message);
+        res.status(500).json({ error: "Gagal memuat stream." });
     }
 });
-
-
-
 
 
 // Tambahkan handler untuk Vercel
