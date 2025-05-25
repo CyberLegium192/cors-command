@@ -31,27 +31,34 @@ app.get("/api/showroom/:room_id", async (req, res) => {
 
 app.get("/api/stream", async (req, res) => {
     const { url } = req.query;
-
-    if (!url) return res.status(400).json({ error: "Parameter 'url' diperlukan." });
-
-    try {
-        const response = await axios.get(url, {
-            responseType: 'stream',
-            headers: {
-                // Jika diperlukan, tambahkan custom headers
-                'Origin': 'https://dc.crstlnz.my.id'
-            }
-        });
-
-        // Set content type dan stream video-nya
-        res.setHeader('Content-Type', response.headers['content-type']);
-        response.data.pipe(res);
-    } catch (error) {
-        console.error("Error saat mem-proxy video:", error.message);
-        res.status(500).json({ error: "Gagal memuat stream." });
+  
+    if (!url) {
+      return res.status(400).json({ error: "Parameter 'url' diperlukan." });
     }
-});
-
+  
+    try {
+      const response = await axios.get(url, {
+        responseType: 'stream',
+        maxRedirects: 5,
+        headers: {
+          // Header penting agar AWS IVS tidak menolak
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+          'Accept': '*/*',
+          'Origin': 'https://dc.crstlnz.my.id', // optional, bisa kamu hapus kalau tetap error
+        }
+      });
+  
+      res.setHeader('Content-Type', response.headers['content-type'] || 'application/vnd.apple.mpegurl');
+      response.data.pipe(res);
+    } catch (error) {
+      console.error("Stream error:", error.message);
+      if (error.response) {
+        res.status(error.response.status).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: "Gagal mengambil stream." });
+      }
+    }
+  });
 
 // Tambahkan handler untuk Vercel
 export default app;
