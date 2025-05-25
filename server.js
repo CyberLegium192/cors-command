@@ -28,37 +28,43 @@ app.get("/api/showroom/:room_id", async (req, res) => {
     }
 });
 
-
 app.get("/api/stream", async (req, res) => {
     const { url } = req.query;
   
     if (!url) {
-      return res.status(400).json({ error: "Parameter 'url' diperlukan." });
+      return res.status(400).json({ error: "Missing url parameter." });
     }
   
     try {
       const response = await axios.get(url, {
-        responseType: 'stream',
-        maxRedirects: 5,
+        responseType: "stream",
         headers: {
-          // Header penting agar AWS IVS tidak menolak
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-          'Accept': '*/*',
-          'Origin': 'https://dc.crstlnz.my.id', // optional, bisa kamu hapus kalau tetap error
-        }
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+          "Accept": "*/*",
+          "Referer": "https://www.idn.live/",  // sesuaikan referer dengan sumber aslinya
+          "Origin": "https://www.idn.live",
+        },
+        maxRedirects: 5
       });
   
-      res.setHeader('Content-Type', response.headers['content-type'] || 'application/vnd.apple.mpegurl');
+      // Forward content-type dari response upstream
+      res.setHeader("Content-Type", response.headers["content-type"]);
       response.data.pipe(res);
     } catch (error) {
-      console.error("Stream error:", error.message);
+      console.error("Proxy error:", error.message);
+  
       if (error.response) {
-        res.status(error.response.status).json({ error: error.message });
+        return res.status(error.response.status).json({
+          error: error.message,
+          status: error.response.status,
+          data: error.response.data
+        });
       } else {
-        res.status(500).json({ error: "Gagal mengambil stream." });
+        return res.status(500).json({ error: "Unknown error" });
       }
     }
   });
+  
 
 // Tambahkan handler untuk Vercel
 export default app;
